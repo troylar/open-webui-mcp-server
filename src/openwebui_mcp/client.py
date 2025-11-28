@@ -49,20 +49,7 @@ class OpenWebUIClient:
         api_key: Optional[str] = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """Make an authenticated request to Open WebUI API.
-
-        Args:
-            method: HTTP method (GET, POST, PUT, DELETE)
-            path: API path (e.g., /api/v1/users)
-            api_key: Optional override for user's API key
-            **kwargs: Additional arguments passed to httpx
-
-        Returns:
-            JSON response from the API
-
-        Raises:
-            httpx.HTTPStatusError: If the request fails
-        """
+        """Make an authenticated request to Open WebUI API."""
         url = f"{self.base_url}{path}"
         headers = self._get_headers(api_key)
 
@@ -81,22 +68,21 @@ class OpenWebUIClient:
 
     # Convenience methods
     async def get(self, path: str, api_key: Optional[str] = None, **kwargs: Any) -> dict:
-        """GET request."""
         return await self.request("GET", path, api_key, **kwargs)
 
     async def post(self, path: str, api_key: Optional[str] = None, **kwargs: Any) -> dict:
-        """POST request."""
         return await self.request("POST", path, api_key, **kwargs)
 
     async def put(self, path: str, api_key: Optional[str] = None, **kwargs: Any) -> dict:
-        """PUT request."""
         return await self.request("PUT", path, api_key, **kwargs)
 
     async def delete(self, path: str, api_key: Optional[str] = None, **kwargs: Any) -> dict:
-        """DELETE request."""
         return await self.request("DELETE", path, api_key, **kwargs)
 
-    # User management
+    # ==========================================================================
+    # User Management
+    # ==========================================================================
+
     async def list_users(self, api_key: Optional[str] = None) -> dict:
         """List all users (admin only)."""
         return await self.get("/api/v1/users/", api_key)
@@ -123,7 +109,10 @@ class OpenWebUIClient:
         """Delete a user (admin only)."""
         return await self.delete(f"/api/v1/users/{user_id}", api_key)
 
-    # Group management
+    # ==========================================================================
+    # Group Management
+    # ==========================================================================
+
     async def list_groups(self, api_key: Optional[str] = None) -> dict:
         """List all groups."""
         return await self.get("/api/v1/groups/", api_key)
@@ -181,7 +170,10 @@ class OpenWebUIClient:
         """Delete a group (admin only)."""
         return await self.delete(f"/api/v1/groups/id/{group_id}", api_key)
 
-    # Model management
+    # ==========================================================================
+    # Model Management
+    # ==========================================================================
+
     async def list_models(self, api_key: Optional[str] = None) -> dict:
         """List all models."""
         return await self.get("/api/v1/models/", api_key)
@@ -231,7 +223,10 @@ class OpenWebUIClient:
         """Delete a model (admin only)."""
         return await self.delete(f"/api/v1/models/{model_id}", api_key)
 
-    # Knowledge base management
+    # ==========================================================================
+    # Knowledge Base Management
+    # ==========================================================================
+
     async def list_knowledge(self, api_key: Optional[str] = None) -> dict:
         """List all knowledge bases."""
         return await self.get("/api/v1/knowledge/", api_key)
@@ -253,11 +248,152 @@ class OpenWebUIClient:
             json={"name": name, "description": description},
         )
 
+    async def update_knowledge(
+        self,
+        knowledge_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Update a knowledge base."""
+        data = {}
+        if name is not None:
+            data["name"] = name
+        if description is not None:
+            data["description"] = description
+        return await self.post(f"/api/v1/knowledge/{knowledge_id}/update", api_key, json=data)
+
     async def delete_knowledge(self, knowledge_id: str, api_key: Optional[str] = None) -> dict:
         """Delete a knowledge base."""
         return await self.delete(f"/api/v1/knowledge/{knowledge_id}", api_key)
 
-    # Chat management
+    # ==========================================================================
+    # File Management
+    # ==========================================================================
+
+    async def list_files(self, api_key: Optional[str] = None) -> dict:
+        """List all files."""
+        return await self.get("/api/v1/files/", api_key)
+
+    async def search_files(self, filename: str, api_key: Optional[str] = None) -> dict:
+        """Search files by filename pattern (supports wildcards)."""
+        return await self.get(f"/api/v1/files/search?filename={filename}", api_key)
+
+    async def get_file(self, file_id: str, api_key: Optional[str] = None) -> dict:
+        """Get a specific file's metadata."""
+        return await self.get(f"/api/v1/files/{file_id}", api_key)
+
+    async def get_file_content(self, file_id: str, api_key: Optional[str] = None) -> dict:
+        """Get extracted text content from a file."""
+        return await self.get(f"/api/v1/files/{file_id}/data/content", api_key)
+
+    async def update_file_content(
+        self, file_id: str, content: str, api_key: Optional[str] = None
+    ) -> dict:
+        """Update the extracted content of a file."""
+        return await self.post(
+            f"/api/v1/files/{file_id}/data/content/update",
+            api_key,
+            json={"content": content},
+        )
+
+    async def delete_file(self, file_id: str, api_key: Optional[str] = None) -> dict:
+        """Delete a file."""
+        return await self.delete(f"/api/v1/files/{file_id}", api_key)
+
+    async def delete_all_files(self, api_key: Optional[str] = None) -> dict:
+        """Delete all files (admin only)."""
+        return await self.delete("/api/v1/files/all", api_key)
+
+    # ==========================================================================
+    # Prompt Management
+    # ==========================================================================
+
+    async def list_prompts(self, api_key: Optional[str] = None) -> dict:
+        """List all prompts/templates."""
+        return await self.get("/api/v1/prompts/", api_key)
+
+    async def create_prompt(
+        self,
+        command: str,
+        title: str,
+        content: str,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Create a new prompt template."""
+        return await self.post(
+            "/api/v1/prompts/create",
+            api_key,
+            json={"command": command, "title": title, "content": content},
+        )
+
+    async def get_prompt(self, command: str, api_key: Optional[str] = None) -> dict:
+        """Get a prompt by command (without leading slash)."""
+        return await self.get(f"/api/v1/prompts/command/{command}", api_key)
+
+    async def update_prompt(
+        self,
+        command: str,
+        title: Optional[str] = None,
+        content: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Update a prompt template."""
+        data = {"command": f"/{command}"}
+        if title is not None:
+            data["title"] = title
+        if content is not None:
+            data["content"] = content
+        return await self.post(f"/api/v1/prompts/command/{command}/update", api_key, json=data)
+
+    async def delete_prompt(self, command: str, api_key: Optional[str] = None) -> dict:
+        """Delete a prompt template."""
+        return await self.delete(f"/api/v1/prompts/command/{command}/delete", api_key)
+
+    # ==========================================================================
+    # Memory Management
+    # ==========================================================================
+
+    async def list_memories(self, api_key: Optional[str] = None) -> dict:
+        """List all user memories."""
+        return await self.get("/api/v1/memories/", api_key)
+
+    async def add_memory(self, content: str, api_key: Optional[str] = None) -> dict:
+        """Add a new memory."""
+        return await self.post("/api/v1/memories/add", api_key, json={"content": content})
+
+    async def query_memories(
+        self, content: str, k: int = 5, api_key: Optional[str] = None
+    ) -> dict:
+        """Query memories using semantic search."""
+        return await self.post(
+            "/api/v1/memories/query", api_key, json={"content": content, "k": k}
+        )
+
+    async def update_memory(
+        self, memory_id: str, content: str, api_key: Optional[str] = None
+    ) -> dict:
+        """Update a memory."""
+        return await self.post(
+            f"/api/v1/memories/{memory_id}/update", api_key, json={"content": content}
+        )
+
+    async def delete_memory(self, memory_id: str, api_key: Optional[str] = None) -> dict:
+        """Delete a memory."""
+        return await self.delete(f"/api/v1/memories/{memory_id}", api_key)
+
+    async def delete_all_memories(self, api_key: Optional[str] = None) -> dict:
+        """Delete all user memories."""
+        return await self.delete("/api/v1/memories/delete/user", api_key)
+
+    async def reset_memories(self, api_key: Optional[str] = None) -> dict:
+        """Reset memory vector database (re-embed all memories)."""
+        return await self.post("/api/v1/memories/reset", api_key)
+
+    # ==========================================================================
+    # Chat Management
+    # ==========================================================================
+
     async def list_chats(self, api_key: Optional[str] = None) -> dict:
         """List user's chats."""
         return await self.get("/api/v1/chats/", api_key)
@@ -274,7 +410,50 @@ class OpenWebUIClient:
         """Delete all user's chats."""
         return await self.delete("/api/v1/chats/", api_key)
 
-    # Tool management
+    async def archive_chat(self, chat_id: str, api_key: Optional[str] = None) -> dict:
+        """Archive a chat."""
+        return await self.get(f"/api/v1/chats/{chat_id}/archive", api_key)
+
+    async def share_chat(self, chat_id: str, api_key: Optional[str] = None) -> dict:
+        """Share a chat (make public)."""
+        return await self.post(f"/api/v1/chats/{chat_id}/share", api_key)
+
+    async def clone_chat(self, chat_id: str, api_key: Optional[str] = None) -> dict:
+        """Clone a shared chat."""
+        return await self.get(f"/api/v1/chats/{chat_id}/clone", api_key)
+
+    # ==========================================================================
+    # Folder Management
+    # ==========================================================================
+
+    async def list_folders(self, api_key: Optional[str] = None) -> dict:
+        """List all folders."""
+        return await self.get("/api/v1/folders/", api_key)
+
+    async def create_folder(self, name: str, api_key: Optional[str] = None) -> dict:
+        """Create a new folder."""
+        return await self.post("/api/v1/folders/create", api_key, json={"name": name})
+
+    async def get_folder(self, folder_id: str, api_key: Optional[str] = None) -> dict:
+        """Get a specific folder."""
+        return await self.get(f"/api/v1/folders/{folder_id}", api_key)
+
+    async def update_folder(
+        self, folder_id: str, name: str, api_key: Optional[str] = None
+    ) -> dict:
+        """Update a folder's name."""
+        return await self.post(
+            f"/api/v1/folders/{folder_id}/update", api_key, json={"name": name}
+        )
+
+    async def delete_folder(self, folder_id: str, api_key: Optional[str] = None) -> dict:
+        """Delete a folder."""
+        return await self.delete(f"/api/v1/folders/{folder_id}", api_key)
+
+    # ==========================================================================
+    # Tool Management
+    # ==========================================================================
+
     async def list_tools(self, api_key: Optional[str] = None) -> dict:
         """List all tools."""
         return await self.get("/api/v1/tools/", api_key)
@@ -283,16 +462,149 @@ class OpenWebUIClient:
         """Get a specific tool."""
         return await self.get(f"/api/v1/tools/id/{tool_id}", api_key)
 
-    # Function management
+    async def create_tool(
+        self,
+        id: str,
+        name: str,
+        content: str,
+        meta: Optional[dict] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Create a new tool."""
+        data = {"id": id, "name": name, "content": content}
+        if meta:
+            data["meta"] = meta
+        return await self.post("/api/v1/tools/create", api_key, json=data)
+
+    async def update_tool(
+        self,
+        tool_id: str,
+        name: Optional[str] = None,
+        content: Optional[str] = None,
+        meta: Optional[dict] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Update a tool."""
+        data = {}
+        if name is not None:
+            data["name"] = name
+        if content is not None:
+            data["content"] = content
+        if meta is not None:
+            data["meta"] = meta
+        return await self.post(f"/api/v1/tools/id/{tool_id}/update", api_key, json=data)
+
+    async def delete_tool(self, tool_id: str, api_key: Optional[str] = None) -> dict:
+        """Delete a tool."""
+        return await self.delete(f"/api/v1/tools/id/{tool_id}", api_key)
+
+    # ==========================================================================
+    # Function Management
+    # ==========================================================================
+
     async def list_functions(self, api_key: Optional[str] = None) -> dict:
-        """List all functions."""
+        """List all functions (filters/pipes)."""
         return await self.get("/api/v1/functions/", api_key)
 
     async def get_function(self, function_id: str, api_key: Optional[str] = None) -> dict:
         """Get a specific function."""
         return await self.get(f"/api/v1/functions/id/{function_id}", api_key)
 
-    # Config/settings
+    async def create_function(
+        self,
+        id: str,
+        name: str,
+        type: str,
+        content: str,
+        meta: Optional[dict] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Create a new function (filter/pipe)."""
+        data = {"id": id, "name": name, "type": type, "content": content}
+        if meta:
+            data["meta"] = meta
+        return await self.post("/api/v1/functions/create", api_key, json=data)
+
+    async def update_function(
+        self,
+        function_id: str,
+        name: Optional[str] = None,
+        content: Optional[str] = None,
+        meta: Optional[dict] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Update a function."""
+        data = {}
+        if name is not None:
+            data["name"] = name
+        if content is not None:
+            data["content"] = content
+        if meta is not None:
+            data["meta"] = meta
+        return await self.post(f"/api/v1/functions/id/{function_id}/update", api_key, json=data)
+
+    async def toggle_function(
+        self, function_id: str, api_key: Optional[str] = None
+    ) -> dict:
+        """Toggle a function's enabled state."""
+        return await self.post(f"/api/v1/functions/id/{function_id}/toggle", api_key)
+
+    async def delete_function(self, function_id: str, api_key: Optional[str] = None) -> dict:
+        """Delete a function."""
+        return await self.delete(f"/api/v1/functions/id/{function_id}", api_key)
+
+    # ==========================================================================
+    # Config/Settings (Admin)
+    # ==========================================================================
+
     async def get_config(self, api_key: Optional[str] = None) -> dict:
-        """Get system configuration."""
+        """Get system configuration (admin only)."""
         return await self.get("/api/v1/configs/", api_key)
+
+    async def export_config(self, api_key: Optional[str] = None) -> dict:
+        """Export full configuration (admin only)."""
+        return await self.get("/api/v1/configs/export", api_key)
+
+    async def import_config(self, config: dict, api_key: Optional[str] = None) -> dict:
+        """Import configuration (admin only)."""
+        return await self.post("/api/v1/configs/import", api_key, json={"config": config})
+
+    async def get_banners(self, api_key: Optional[str] = None) -> dict:
+        """Get system banners."""
+        return await self.get("/api/v1/configs/banners", api_key)
+
+    async def set_banners(self, banners: list, api_key: Optional[str] = None) -> dict:
+        """Set system banners (admin only)."""
+        return await self.post("/api/v1/configs/banners", api_key, json={"banners": banners})
+
+    async def get_models_config(self, api_key: Optional[str] = None) -> dict:
+        """Get default models configuration (admin only)."""
+        return await self.get("/api/v1/configs/models", api_key)
+
+    async def set_models_config(
+        self,
+        default_models: Optional[str] = None,
+        model_order: Optional[list] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Set default models configuration (admin only)."""
+        data = {}
+        if default_models is not None:
+            data["DEFAULT_MODELS"] = default_models
+        if model_order is not None:
+            data["MODEL_ORDER_LIST"] = model_order
+        return await self.post("/api/v1/configs/models", api_key, json=data)
+
+    async def get_tool_servers(self, api_key: Optional[str] = None) -> dict:
+        """Get tool server connections (admin only)."""
+        return await self.get("/api/v1/configs/tool_servers", api_key)
+
+    async def set_tool_servers(
+        self, connections: list, api_key: Optional[str] = None
+    ) -> dict:
+        """Set tool server connections (admin only)."""
+        return await self.post(
+            "/api/v1/configs/tool_servers",
+            api_key,
+            json={"TOOL_SERVER_CONNECTIONS": connections},
+        )
