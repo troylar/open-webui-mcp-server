@@ -608,3 +608,133 @@ class OpenWebUIClient:
             api_key,
             json={"TOOL_SERVER_CONNECTIONS": connections},
         )
+
+    # ==========================================================================
+    # Notes Management
+    # ==========================================================================
+
+    async def list_notes(self, api_key: Optional[str] = None) -> dict:
+        """List all notes."""
+        return await self.get("/api/v1/notes/", api_key)
+
+    async def create_note(
+        self,
+        title: str,
+        content: str,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Create a new note."""
+        return await self.post(
+            "/api/v1/notes/create",
+            api_key,
+            json={"title": title, "content": content},
+        )
+
+    async def get_note(self, note_id: str, api_key: Optional[str] = None) -> dict:
+        """Get a specific note."""
+        return await self.get(f"/api/v1/notes/{note_id}", api_key)
+
+    async def update_note(
+        self,
+        note_id: str,
+        title: Optional[str] = None,
+        content: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Update a note."""
+        data = {}
+        if title is not None:
+            data["title"] = title
+        if content is not None:
+            data["content"] = content
+        return await self.post(f"/api/v1/notes/{note_id}/update", api_key, json=data)
+
+    async def delete_note(self, note_id: str, api_key: Optional[str] = None) -> dict:
+        """Delete a note."""
+        return await self.delete(f"/api/v1/notes/{note_id}/delete", api_key)
+
+    # ==========================================================================
+    # Channels (Team Chat) Management
+    # ==========================================================================
+
+    async def list_channels(self, api_key: Optional[str] = None) -> dict:
+        """List channels accessible to the user."""
+        return await self.get("/api/v1/channels/", api_key)
+
+    async def create_channel(
+        self,
+        name: str,
+        description: str = "",
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Create a new channel (admin only)."""
+        return await self.post(
+            "/api/v1/channels/create",
+            api_key,
+            json={"name": name, "description": description},
+        )
+
+    async def get_channel(self, channel_id: str, api_key: Optional[str] = None) -> dict:
+        """Get a specific channel."""
+        return await self.get(f"/api/v1/channels/{channel_id}", api_key)
+
+    async def update_channel(
+        self,
+        channel_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Update a channel (admin only)."""
+        data = {}
+        if name is not None:
+            data["name"] = name
+        if description is not None:
+            data["description"] = description
+        return await self.post(f"/api/v1/channels/{channel_id}/update", api_key, json=data)
+
+    async def delete_channel(self, channel_id: str, api_key: Optional[str] = None) -> dict:
+        """Delete a channel (admin only)."""
+        return await self.delete(f"/api/v1/channels/{channel_id}/delete", api_key)
+
+    async def get_channel_messages(
+        self,
+        channel_id: str,
+        skip: int = 0,
+        limit: int = 50,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Get messages from a channel."""
+        return await self.get(
+            f"/api/v1/channels/{channel_id}/messages?skip={skip}&limit={limit}",
+            api_key,
+        )
+
+    async def post_channel_message(
+        self,
+        channel_id: str,
+        content: str,
+        parent_id: Optional[str] = None,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Post a message to a channel."""
+        data = {"content": content}
+        if parent_id:
+            data["parent_id"] = parent_id
+        return await self.post(
+            f"/api/v1/channels/{channel_id}/messages/post",
+            api_key,
+            json=data,
+        )
+
+    async def delete_channel_message(
+        self,
+        channel_id: str,
+        message_id: str,
+        api_key: Optional[str] = None,
+    ) -> dict:
+        """Delete a message from a channel."""
+        return await self.delete(
+            f"/api/v1/channels/{channel_id}/messages/{message_id}/delete",
+            api_key,
+        )

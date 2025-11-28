@@ -194,6 +194,44 @@ class FunctionUpdateParam(BaseModel):
     name: Optional[str] = Field(default=None, description="New name")
     content: Optional[str] = Field(default=None, description="New code")
 
+class NoteCreateParam(BaseModel):
+    title: str = Field(description="Note title")
+    content: str = Field(description="Note content (markdown supported)")
+
+class NoteIdParam(BaseModel):
+    note_id: str = Field(description="Note ID")
+
+class NoteUpdateParam(BaseModel):
+    note_id: str = Field(description="Note ID")
+    title: Optional[str] = Field(default=None, description="New title")
+    content: Optional[str] = Field(default=None, description="New content")
+
+class ChannelCreateParam(BaseModel):
+    name: str = Field(description="Channel name")
+    description: str = Field(default="", description="Channel description")
+
+class ChannelIdParam(BaseModel):
+    channel_id: str = Field(description="Channel ID")
+
+class ChannelUpdateParam(BaseModel):
+    channel_id: str = Field(description="Channel ID")
+    name: Optional[str] = Field(default=None, description="New channel name")
+    description: Optional[str] = Field(default=None, description="New description")
+
+class ChannelMessageParam(BaseModel):
+    channel_id: str = Field(description="Channel ID")
+    content: str = Field(description="Message content")
+    parent_id: Optional[str] = Field(default=None, description="Parent message ID for threading")
+
+class ChannelMessagesParam(BaseModel):
+    channel_id: str = Field(description="Channel ID")
+    skip: int = Field(default=0, description="Number of messages to skip")
+    limit: int = Field(default=50, description="Maximum number of messages to return")
+
+class ChannelMessageIdParam(BaseModel):
+    channel_id: str = Field(description="Channel ID")
+    message_id: str = Field(description="Message ID")
+
 
 # =============================================================================
 # User Management Tools
@@ -595,6 +633,87 @@ async def toggle_function(params: FunctionIdParam, ctx: Context) -> dict[str, An
 async def delete_function(params: FunctionIdParam, ctx: Context) -> dict[str, Any]:
     """Delete a function."""
     return await get_client().delete_function(params.function_id, get_user_token())
+
+
+# =============================================================================
+# Notes Management Tools
+# =============================================================================
+
+@mcp.tool()
+async def list_notes(ctx: Context) -> dict[str, Any]:
+    """List all your notes."""
+    return await get_client().list_notes(get_user_token())
+
+@mcp.tool()
+async def create_note(params: NoteCreateParam, ctx: Context) -> dict[str, Any]:
+    """Create a new note with markdown content."""
+    return await get_client().create_note(params.title, params.content, get_user_token())
+
+@mcp.tool()
+async def get_note(params: NoteIdParam, ctx: Context) -> dict[str, Any]:
+    """Get a specific note by ID."""
+    return await get_client().get_note(params.note_id, get_user_token())
+
+@mcp.tool()
+async def update_note(params: NoteUpdateParam, ctx: Context) -> dict[str, Any]:
+    """Update a note's title or content."""
+    return await get_client().update_note(params.note_id, params.title, params.content, get_user_token())
+
+@mcp.tool()
+async def delete_note(params: NoteIdParam, ctx: Context) -> dict[str, Any]:
+    """Delete a note."""
+    return await get_client().delete_note(params.note_id, get_user_token())
+
+
+# =============================================================================
+# Channels (Team Chat) Management Tools
+# =============================================================================
+
+@mcp.tool()
+async def list_channels(ctx: Context) -> dict[str, Any]:
+    """List all team chat channels."""
+    return await get_client().list_channels(get_user_token())
+
+@mcp.tool()
+async def create_channel(params: ChannelCreateParam, ctx: Context) -> dict[str, Any]:
+    """Create a new team chat channel."""
+    return await get_client().create_channel(params.name, params.description, get_user_token())
+
+@mcp.tool()
+async def get_channel(params: ChannelIdParam, ctx: Context) -> dict[str, Any]:
+    """Get details for a specific channel."""
+    return await get_client().get_channel(params.channel_id, get_user_token())
+
+@mcp.tool()
+async def update_channel(params: ChannelUpdateParam, ctx: Context) -> dict[str, Any]:
+    """Update a channel's name or description."""
+    return await get_client().update_channel(params.channel_id, params.name, params.description, get_user_token())
+
+@mcp.tool()
+async def delete_channel(params: ChannelIdParam, ctx: Context) -> dict[str, Any]:
+    """Delete a channel and all its messages."""
+    return await get_client().delete_channel(params.channel_id, get_user_token())
+
+@mcp.tool()
+async def get_channel_messages(params: ChannelMessagesParam, ctx: Context) -> dict[str, Any]:
+    """Get messages from a channel with pagination."""
+    return await get_client().get_channel_messages(
+        params.channel_id, params.skip, params.limit, get_user_token()
+    )
+
+@mcp.tool()
+async def post_channel_message(params: ChannelMessageParam, ctx: Context) -> dict[str, Any]:
+    """Post a message to a channel. Optionally reply to a parent message."""
+    return await get_client().post_channel_message(
+        params.channel_id, params.content, params.parent_id, get_user_token()
+    )
+
+@mcp.tool()
+async def delete_channel_message(params: ChannelMessageIdParam, ctx: Context) -> dict[str, Any]:
+    """Delete a message from a channel."""
+    return await get_client().delete_channel_message(
+        params.channel_id, params.message_id, get_user_token()
+    )
 
 
 # =============================================================================
