@@ -20,6 +20,26 @@ from .client import OpenWebUIClient
 # Context variable to store the current user's token
 _current_user_token: ContextVar[Optional[str]] = ContextVar("current_user_token", default=None)
 
+
+class AuthMiddleware:
+    """ASGI middleware to extract Authorization header and set context variable."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            # Extract Authorization header
+            headers = dict(scope.get("headers", []))
+            auth_header = headers.get(b"authorization", b"").decode()
+
+            # Extract Bearer token
+            if auth_header.startswith("Bearer "):
+                token = auth_header[7:]  # Remove "Bearer " prefix
+                _current_user_token.set(token)
+
+        await self.app(scope, receive, send)
+
 # Initialize MCP server
 mcp = FastMCP(
     name="openwebui-mcp-server",
@@ -547,7 +567,15 @@ def main():
     path = os.getenv("MCP_HTTP_PATH", "/mcp")
 
     if transport == "http":
-        mcp.run(transport="http", host=host, port=port, path=path)
+        # For HTTP transport, wrap with auth middleware to extract tokens
+        import uvicorn
+
+        # Get the ASGI app from FastMCP and wrap with middleware
+        app = mcp.http_app(path=path)
+        app = AuthMiddleware(app)
+
+        print(f"Starting Open WebUI MCP server on http://{host}:{port}{path}")
+        uvicorn.run(app, host=host, port=port)
     else:
         mcp.run()
 
