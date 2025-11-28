@@ -41,11 +41,7 @@ class AuthMiddleware:
         await self.app(scope, receive, send)
 
 # Initialize MCP server
-mcp = FastMCP(
-    name="openwebui-mcp-server",
-    version="0.1.0",
-    description="MCP server for managing Open WebUI - users, groups, models, and more",
-)
+mcp = FastMCP("openwebui-mcp-server")
 
 # Initialize client (URL from env)
 _client: Optional[OpenWebUIClient] = None
