@@ -9,10 +9,10 @@ through, ensuring all operations respect their permissions.
 """
 
 import os
-from typing import Any, Optional
 from contextvars import ContextVar
+from typing import Any, Optional
 
-from fastmcp import FastMCP, Context
+from fastmcp import Context, FastMCP
 from pydantic import BaseModel, Field
 
 from .client import OpenWebUIClient
@@ -100,6 +100,7 @@ class ModelIdParam(BaseModel):
 
 class ModelUpdateParam(BaseModel):
     model_id: str = Field(description="Model ID")
+    base_model_id: Optional[str] = Field(default=None, description="New base model ID")
     name: Optional[str] = Field(default=None, description="New display name")
     system_prompt: Optional[str] = Field(default=None, description="New system prompt")
     temperature: Optional[float] = Field(default=None, description="New temperature")
@@ -321,26 +322,22 @@ async def get_model(params: ModelIdParam, ctx: Context) -> dict[str, Any]:
 @mcp.tool()
 async def create_model(params: ModelCreateParam, ctx: Context) -> dict[str, Any]:
     """Create a new custom model wrapper. ADMIN ONLY."""
-    meta = {}
-    if params.system_prompt:
-        meta["system"] = params.system_prompt
     model_params = {}
+    if params.system_prompt:
+        model_params["system"] = params.system_prompt
     if params.temperature is not None:
         model_params["temperature"] = params.temperature
     if params.max_tokens is not None:
         model_params["max_tokens"] = params.max_tokens
     return await get_client().create_model(
         id=params.id, name=params.name, base_model_id=params.base_model_id,
-        meta=meta if meta else None, params=model_params if model_params else None,
+        meta=None, params=model_params if model_params else None,
         api_key=get_user_token()
     )
 
 @mcp.tool()
 async def update_model(params: ModelUpdateParam, ctx: Context) -> dict[str, Any]:
     """Update a model's name, system prompt, or parameters."""
-    meta = None
-    if params.system_prompt is not None:
-        meta = {"system": params.system_prompt}
     model_params = None
     if params.temperature is not None or params.max_tokens is not None:
         model_params = {}
@@ -348,7 +345,16 @@ async def update_model(params: ModelUpdateParam, ctx: Context) -> dict[str, Any]
             model_params["temperature"] = params.temperature
         if params.max_tokens is not None:
             model_params["max_tokens"] = params.max_tokens
-    return await get_client().update_model(params.model_id, params.name, meta, model_params, get_user_token())
+    if params.system_prompt is not None:
+        model_params = model_params or {}
+        model_params["system"] = params.system_prompt
+    return await get_client().update_model(
+        params.model_id,
+        name=params.name,
+        params=model_params,
+        base_model_id=params.base_model_id,
+        api_key=get_user_token(),
+    )
 
 @mcp.tool()
 async def delete_model(params: ModelIdParam, ctx: Context) -> dict[str, Any]:
