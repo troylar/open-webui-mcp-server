@@ -533,14 +533,14 @@ class OpenWebUIClient:
         meta: Optional[dict] = None,
         api_key: Optional[str] = None,
     ) -> dict:
-        """Update a function."""
-        data = {}
-        if name is not None:
-            data["name"] = name
-        if content is not None:
-            data["content"] = content
-        if meta is not None:
-            data["meta"] = meta
+        """Update a function while preserving fields required by Open WebUI's FunctionForm."""
+        existing = await self.get_function(function_id, api_key)
+        data = {
+            "id": function_id,
+            "name": name if name is not None else existing["name"],
+            "content": content if content is not None else existing["content"],
+            "meta": meta if meta is not None else existing.get("meta", {}),
+        }
         return await self.post(f"/api/v1/functions/id/{function_id}/update", api_key, json=data)
 
     async def toggle_function(
