@@ -129,15 +129,16 @@ class FileContentParam(BaseModel):
 
 class PromptCreateParam(BaseModel):
     command: str = Field(description="Command trigger (e.g., '/summarize')")
-    title: str = Field(description="Prompt title")
+    name: str = Field(description="Prompt name")
     content: str = Field(description="Prompt template content")
 
 class PromptIdParam(BaseModel):
-    command: str = Field(description="Command (without leading slash)")
+    prompt_id: str = Field(description="Prompt ID")
 
 class PromptUpdateParam(BaseModel):
-    command: str = Field(description="Command (without leading slash)")
-    title: Optional[str] = Field(default=None, description="New title")
+    prompt_id: str = Field(description="Prompt ID")
+    command: Optional[str] = Field(default=None, description="New command trigger")
+    name: Optional[str] = Field(default=None, description="New prompt name")
     content: Optional[str] = Field(default=None, description="New content")
 
 class MemoryAddParam(BaseModel):
@@ -438,22 +439,28 @@ async def list_prompts(ctx: Context) -> dict[str, Any]:
 @mcp.tool()
 async def create_prompt(params: PromptCreateParam, ctx: Context) -> dict[str, Any]:
     """Create a new prompt template triggered by a command."""
-    return await get_client().create_prompt(params.command, params.title, params.content, get_user_token())
+    return await get_client().create_prompt(params.command, params.name, params.content, get_user_token())
 
 @mcp.tool()
 async def get_prompt(params: PromptIdParam, ctx: Context) -> dict[str, Any]:
-    """Get a prompt template by its command."""
-    return await get_client().get_prompt(params.command, get_user_token())
+    """Get a prompt template by its stable ID."""
+    return await get_client().get_prompt(params.prompt_id, get_user_token())
 
 @mcp.tool()
 async def update_prompt(params: PromptUpdateParam, ctx: Context) -> dict[str, Any]:
     """Update a prompt template."""
-    return await get_client().update_prompt(params.command, params.title, params.content, get_user_token())
+    return await get_client().update_prompt(
+        params.prompt_id,
+        command=params.command,
+        name=params.name,
+        content=params.content,
+        api_key=get_user_token(),
+    )
 
 @mcp.tool()
 async def delete_prompt(params: PromptIdParam, ctx: Context) -> dict[str, Any]:
     """Delete a prompt template."""
-    return await get_client().delete_prompt(params.command, get_user_token())
+    return await get_client().delete_prompt(params.prompt_id, get_user_token())
 
 
 # =============================================================================

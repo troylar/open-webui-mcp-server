@@ -6,6 +6,7 @@ ensuring all operations respect the user's permissions.
 
 import os
 from typing import Any, Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -316,7 +317,7 @@ class OpenWebUIClient:
     async def create_prompt(
         self,
         command: str,
-        title: str,
+        name: str,
         content: str,
         api_key: Optional[str] = None,
     ) -> dict:
@@ -324,31 +325,39 @@ class OpenWebUIClient:
         return await self.post(
             "/api/v1/prompts/create",
             api_key,
-            json={"command": command, "title": title, "content": content},
+            json={"command": command, "name": name, "content": content},
         )
 
-    async def get_prompt(self, command: str, api_key: Optional[str] = None) -> dict:
-        """Get a prompt by command (without leading slash)."""
-        return await self.get(f"/api/v1/prompts/command/{command}", api_key)
+    async def get_prompt(self, prompt_id: str, api_key: Optional[str] = None) -> dict:
+        """Get a prompt by its stable Open WebUI ID."""
+        return await self.get(f"/api/v1/prompts/id/{quote(prompt_id, safe='')}", api_key)
 
     async def update_prompt(
         self,
-        command: str,
-        title: Optional[str] = None,
+        prompt_id: str,
+        command: Optional[str] = None,
+        name: Optional[str] = None,
         content: Optional[str] = None,
         api_key: Optional[str] = None,
     ) -> dict:
-        """Update a prompt template."""
-        data = {"command": f"/{command}"}
-        if title is not None:
-            data["title"] = title
-        if content is not None:
-            data["content"] = content
-        return await self.post(f"/api/v1/prompts/command/{command}/update", api_key, json=data)
+        """Update a prompt while preserving fields required by the current API."""
+        existing = await self.get_prompt(prompt_id, api_key)
+        data = {
+            "command": command if command is not None else existing["command"],
+            "name": name if name is not None else existing["name"],
+            "content": content if content is not None else existing["content"],
+            "data": existing.get("data"),
+            "meta": existing.get("meta"),
+            "tags": existing.get("tags"),
+            "access_grants": existing.get("access_grants"),
+        }
+        return await self.post(
+            f"/api/v1/prompts/id/{quote(prompt_id, safe='')}/update", api_key, json=data
+        )
 
-    async def delete_prompt(self, command: str, api_key: Optional[str] = None) -> dict:
+    async def delete_prompt(self, prompt_id: str, api_key: Optional[str] = None) -> dict:
         """Delete a prompt template."""
-        return await self.delete(f"/api/v1/prompts/command/{command}/delete", api_key)
+        return await self.delete(f"/api/v1/prompts/id/{quote(prompt_id, safe='')}/delete", api_key)
 
     # ==========================================================================
     # Memory Management
