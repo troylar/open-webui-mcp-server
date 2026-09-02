@@ -153,7 +153,7 @@ class OpenWebUIClient:
         return await self.post(
             f"/api/v1/groups/id/{group_id}/users/add",
             api_key,
-            json={"user_id": user_id},
+            json={"user_ids": [user_id]},
         )
 
     async def remove_user_from_group(
