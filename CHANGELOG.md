@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Group hierarchy support: `parent_group_id` on list, create, and update group
+  operations. Updates omitting `parent_group_id` preserve the current parent;
+  an explicit null parent moves the group to the root level.
+
 ### Changed
 
 - Replaced `add_knowledge_text` with unified `add_knowledge_file` supporting

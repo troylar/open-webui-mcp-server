@@ -103,8 +103,17 @@ client = OpenWebUIClient(
 # List all users (admin only)
 users = await client.list_users()
 
-# Create a group
+# Create a root group or a child under an existing parent
 group = await client.create_group("Engineering", "Engineering team")
+subteam = await client.create_group(
+    "Backend",
+    "Backend squad",
+    parent_group_id="parent-group-id",
+)
+
+# Update name only (parent unchanged); pass parent_group_id=None to move to root
+await client.update_group("group-id", name="Renamed")
+await client.update_group("group-id", parent_group_id=None)
 
 # Create a custom model
 model = await client.create_model(
@@ -134,10 +143,10 @@ additional tools when needed.
 ### Group Management
 | Tool | Description | Permission |
 |------|-------------|------------|
-| `list_groups` | List all groups | Any |
-| `create_group` | Create a new group | Admin |
+| `list_groups` | List groups with `parent_group_id` when present | Any |
+| `create_group` | Create a group; optional `parent_group_id` for hierarchy | Admin |
 | `get_group` | Get group details | Any |
-| `update_group` | Update group name/description | Admin |
+| `update_group` | Update name, description, or parent; omit `parent_group_id` to leave parent unchanged, set it to `null` to move to root | Admin |
 | `add_user_to_group` | Add user to group | Admin |
 | `remove_user_from_group` | Remove user from group | Admin |
 | `delete_group` | Delete a group | Admin |

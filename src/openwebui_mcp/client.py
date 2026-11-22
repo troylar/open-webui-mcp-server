@@ -14,6 +14,16 @@ import httpx
 KNOWLEDGE_PAGE_SIZE = 30
 
 
+class _UnsetType:
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "UNSET"
+
+
+UNSET = _UnsetType()
+
+
 class OpenWebUIClient:
     """Client for the Open WebUI management API."""
 
@@ -217,18 +227,30 @@ class OpenWebUIClient:
         """List all groups."""
         return self._compact_collection(
             await self.get("/api/v1/groups/", api_key),
-            ("id", "name", "description", "member_count", "created_at", "updated_at"),
+            (
+                "id",
+                "name",
+                "description",
+                "parent_group_id",
+                "member_count",
+                "created_at",
+                "updated_at",
+            ),
         )
 
     async def create_group(
-        self, name: str, description: str = "", api_key: Optional[str] = None
+        self,
+        name: str,
+        description: str = "",
+        api_key: Optional[str] = None,
+        *,
+        parent_group_id: Optional[str] = None,
     ) -> dict:
         """Create a new group (admin only)."""
-        return await self.post(
-            "/api/v1/groups/create",
-            api_key,
-            json={"name": name, "description": description},
-        )
+        data: dict[str, Any] = {"name": name, "description": description}
+        if parent_group_id is not None:
+            data["parent_group_id"] = parent_group_id
+        return await self.post("/api/v1/groups/create", api_key, json=data)
 
     async def get_group(self, group_id: str, api_key: Optional[str] = None) -> dict:
         """Get a specific group."""
@@ -240,13 +262,23 @@ class OpenWebUIClient:
         name: Optional[str] = None,
         description: Optional[str] = None,
         api_key: Optional[str] = None,
+        *,
+        parent_group_id: Optional[str] | _UnsetType = UNSET,
     ) -> dict:
         """Update a group (admin only)."""
-        data = {}
+        data: dict[str, Any] = {}
         if name is not None:
             data["name"] = name
         if description is not None:
             data["description"] = description
+        if parent_group_id is not UNSET:
+            data["parent_group_id"] = parent_group_id
+        if name is None or description is None:
+            existing = await self.get_group(group_id, api_key)
+            if name is None:
+                data["name"] = existing["name"]
+            if description is None:
+                data["description"] = existing["description"]
         return await self.post(
             f"/api/v1/groups/id/{self._path_id(group_id)}/update", api_key, json=data
         )
@@ -279,9 +311,7 @@ class OpenWebUIClient:
     # Model Management
     # ==========================================================================
 
-    async def _list_accessible_custom_model_ids(
-        self, api_key: Optional[str] = None
-    ) -> set[str]:
+    async def _list_accessible_custom_model_ids(self, api_key: Optional[str] = None) -> set[str]:
         """Return custom model IDs visible to the authenticated user."""
         first_page = await self.get("/api/v1/models/list?page=1", api_key)
         items = first_page.get("items")
@@ -618,6 +648,7 @@ class OpenWebUIClient:
 
     async def list_knowledge(self, api_key: Optional[str] = None) -> dict:
         """List all knowledge bases, following Open WebUI's 30-item pages."""
+
         def access_grant_count(item: dict[str, Any]) -> Optional[int]:
             grants = item.get("access_grants", [])
             return len(grants) if isinstance(grants, list) else None
@@ -721,9 +752,7 @@ class OpenWebUIClient:
             all_items = list(items)
             page = 2
             while len(all_items) < total:
-                next_page = await self.get(
-                    f"/api/v1/files/?page={page}&content=false", api_key
-                )
+                next_page = await self.get(f"/api/v1/files/?page={page}&content=false", api_key)
                 next_items = next_page.get("items")
                 if not isinstance(next_items, list) or not next_items:
                     break
@@ -1107,8 +1136,7 @@ class OpenWebUIClient:
                     else []
                 )
                 folder_data["files"] = preserved_items + [
-                    {"id": knowledge_id, "type": "collection"}
-                    for knowledge_id in knowledge_ids
+                    {"id": knowledge_id, "type": "collection"} for knowledge_id in knowledge_ids
                 ]
             data["data"] = folder_data
         if not data:
@@ -1447,9 +1475,7 @@ class OpenWebUIClient:
             raise ValueError(f"Expected exactly one tool server with id {server_id!r}")
 
         connection = matching[0]
-        connection.setdefault("config", {})[
-            "function_name_filter_list"
-        ] = function_name_filter_list
+        connection.setdefault("config", {})["function_name_filter_list"] = function_name_filter_list
         if description is not None:
             connection.setdefault("info", {})["description"] = description
 

@@ -196,6 +196,10 @@ class UserRoleParam(BaseModel):
 class GroupCreateParam(BaseModel):
     name: str = Field(description="Group name")
     description: str = Field(default="", description="Group description")
+    parent_group_id: Optional[str] = Field(
+        default=None,
+        description="Parent group ID for hierarchy; omit for a root-level group",
+    )
 
 
 class GroupIdParam(BaseModel):
@@ -206,6 +210,10 @@ class GroupUpdateParam(BaseModel):
     group_id: str = Field(description="Group ID")
     name: Optional[str] = Field(default=None, description="New group name")
     description: Optional[str] = Field(default=None, description="New group description")
+    parent_group_id: Optional[str] = Field(
+        default=None,
+        description="Parent group ID; omit to leave unchanged, null to move to root",
+    )
 
 
 class GroupUserParam(BaseModel):
@@ -659,7 +667,12 @@ async def list_groups(ctx: Context) -> dict[str, Any]:
 @mcp.tool()
 async def create_group(params: GroupCreateParam, ctx: Context) -> dict[str, Any]:
     """Create a new group. ADMIN ONLY."""
-    return await get_client().create_group(params.name, params.description, get_user_token())
+    return await get_client().create_group(
+        params.name,
+        params.description,
+        get_user_token(),
+        parent_group_id=params.parent_group_id,
+    )
 
 
 @mcp.tool()
@@ -670,9 +683,16 @@ async def get_group(params: GroupIdParam, ctx: Context) -> dict[str, Any]:
 
 @mcp.tool()
 async def update_group(params: GroupUpdateParam, ctx: Context) -> dict[str, Any]:
-    """Update a group's name or description. ADMIN ONLY."""
+    """Update a group's name, description, or parent. ADMIN ONLY."""
+    update_kwargs: dict[str, Any] = {}
+    if "parent_group_id" in params.model_fields_set:
+        update_kwargs["parent_group_id"] = params.parent_group_id
     return await get_client().update_group(
-        params.group_id, params.name, params.description, get_user_token()
+        params.group_id,
+        params.name,
+        params.description,
+        get_user_token(),
+        **update_kwargs,
     )
 
 
@@ -875,9 +895,7 @@ async def update_model(params: ModelUpdateParam, ctx: Context) -> dict[str, Any]
 
 
 @mcp.tool()
-async def set_model_visibility(
-    params: ModelVisibilityParam, ctx: Context
-) -> dict[str, Any]:
+async def set_model_visibility(params: ModelVisibilityParam, ctx: Context) -> dict[str, Any]:
     """Set selector visibility for a base or Workspace model. ADMIN ONLY.
 
     Hiding a model does not disable it. Newly discovered provider models with no
